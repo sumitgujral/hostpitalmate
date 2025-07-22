@@ -1,12 +1,3 @@
--- Drop the database if it already exists to ensure a clean start
-DROP DATABASE IF EXISTS hospitalmate_db6;
-
--- Create the new database
-CREATE DATABASE hospitalmate_db6;
-
--- Use the new database
-USE hospitalmate_db6;
-
 -- 1. Patient Management
 CREATE TABLE IF NOT EXISTS patients (
     patient_id INT AUTO_INCREMENT PRIMARY KEY,

@@ -1,34 +1,87 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from datetime import datetime, date
 from db_manager import DatabaseManager
+import pymysql
+import pymysql.cursors
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
 timeout = 10
 
-db_manager = DatabaseManager("hostpitalmate-hospitalmate.f.aivencloud.com", "avnadmin", "AVNS__Jq4CKtqRyPS5Id0EqR", "defaultdb",21233, pymysql.cursors.DictCursor, "utf8mb4", timeout, timeout, timeout)
+DB_HOST = "hostpitalmate-hospitalmate.f.aivencloud.com"
+DB_USER = "avnadmin"
+DB_PASSWORD = "AVNS__Jq4CKtqRyPS5Id0EqR"
+DB_NAME = "defaultdb"
+DB_PORT = 21233
+DB_CHARSET = "utf8mb4"
 
+db_manager = DatabaseManager(
+    host=DB_HOST,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME,
+    port=DB_PORT,
+    charset=DB_CHARSET,
+    connect_timeout=timeout,
+    read_timeout=timeout,
+    write_timeout=timeout
+)
 
-# Ensure database connection is established at app startup
 if not db_manager.connect():
     print("FATAL: Could not connect to database. Exiting.")
     exit()
 
-# --- Helper Functions for Date Conversion ---
+def _setup_database_tables():
+    try:
+        with open('sql_setup.sql', 'r') as f:
+            sql_script = f.read()
+
+        statements = [s.strip() for s in sql_script.split(';') if s.strip()]
+
+        print("Attempting to set up database tables...")
+        for statement in statements:
+            if statement.upper().startswith('CREATE TABLE IF NOT EXISTS'):
+                try:
+                    db_manager.execute_query(statement)
+                    print(f"Executed: {statement.split('(')[0].strip()}...")
+                except pymysql.Error as e:
+                    if e.args[0] == 1050:
+                        print(f"Table already exists, skipping: {statement.split('(')[0].strip()}")
+                    else:
+                        print(f"Error executing SQL statement: {statement}\nError: {e}")
+            elif statement.upper().startswith('DROP DATABASE') or \
+                 statement.upper().startswith('CREATE DATABASE') or \
+                 statement.upper().startswith('USE'):
+                print(f"Skipping database management statement: {statement.split(' ')[0].strip()}...")
+            else:
+                try:
+                    db_manager.execute_query(statement)
+                    print(f"Executed other DDL: {statement.split(' ')[0].strip()}...")
+                except pymysql.Error as e:
+                    print(f"Error executing non-CREATE TABLE DDL: {statement}\nError: {e}")
+
+
+        print("Database table setup complete (or tables already existed).")
+    except FileNotFoundError:
+        print("WARNING: sql_setup.sql not found. Database tables might not be created.")
+    except Exception as e:
+        print(f"An unexpected error occurred during database setup: {e}")
+
+_setup_database_tables()
+
 def parse_date_ddmmyyyy(date_str):
-    """Parses DD-MM-YYYY string to datetime.date object."""
     if not date_str:
         return None
-    return datetime.strptime(date_str, '%d-%m-%Y').date()
-
+    try:
+        return datetime.strptime(date_str, '%d-%m-%Y').date()
+    except ValueError:
+        return None
 
 def format_date_ddmmyyyy(date_obj):
-    """Formats datetime.date object to DD-MM-YYYY string."""
     if not date_obj:
         return ''
     return date_obj.strftime('%d-%m-%Y')
-
-# --- Module Manager Classes (Backend Logic) ---
 
 class PatientManager:
     def __init__(self, db_manager):
@@ -39,19 +92,35 @@ class PatientManager:
                    VALUES (%s, %s, %s, %s, %s)"""
         params = (data['name'], data['dob'], data['gender'], data['address'],
                   data['phone'])
-        return self.db_manager.execute_query(query, params)
+        try:
+            return self.db_manager.execute_query(query, params)
+        except Exception as e:
+            print(f"Error adding patient: {e}")
+            return False
 
     def get_patient(self, patient_id):
         query = "SELECT patient_id, name, dob, gender, address, phone FROM patients WHERE patient_id = %s"
-        return self.db_manager.execute_query(query, (patient_id,), fetch_one=True)
+        try:
+            return self.db_manager.execute_query(query, (patient_id,), fetch_one=True)
+        except Exception as e:
+            print(f"Error getting patient: {e}")
+            return None
 
     def get_all_patients(self):
         query = "SELECT patient_id, name, dob, gender, phone FROM patients ORDER BY patient_id DESC"
-        return self.db_manager.execute_query(query, fetch_all=True)
+        try:
+            return self.db_manager.execute_query(query, fetch_all=True)
+        except Exception as e:
+            print(f"Error getting all patients: {e}")
+            return []
 
     def delete_patient(self, patient_id):
         query = "DELETE FROM patients WHERE patient_id = %s"
-        return self.db_manager.execute_query(query, (patient_id,))
+        try:
+            return self.db_manager.execute_query(query, (patient_id,))
+        except Exception as e:
+            print(f"Error deleting patient: {e}")
+            return False
 
 class DoctorManager:
     def __init__(self, db_manager):
@@ -62,19 +131,35 @@ class DoctorManager:
                    VALUES (%s, %s, %s, %s)"""
         params = (data['name'], data['qualification'], data['specialization'],
                   data['phone'])
-        return self.db_manager.execute_query(query, params)
+        try:
+            return self.db_manager.execute_query(query, params)
+        except Exception as e:
+            print(f"Error adding doctor: {e}")
+            return False
 
     def get_doctor(self, doctor_id):
         query = "SELECT doctor_id, name, qualification, specialization, phone FROM doctors WHERE doctor_id = %s"
-        return self.db_manager.execute_query(query, (doctor_id,), fetch_one=True)
+        try:
+            return self.db_manager.execute_query(query, (doctor_id,), fetch_one=True)
+        except Exception as e:
+            print(f"Error getting doctor: {e}")
+            return None
 
     def get_all_doctors(self):
         query = "SELECT doctor_id, name, qualification, specialization, phone FROM doctors ORDER BY doctor_id DESC"
-        return self.db_manager.execute_query(query, fetch_all=True)
+        try:
+            return self.db_manager.execute_query(query, fetch_all=True)
+        except Exception as e:
+            print(f"Error getting all doctors: {e}")
+            return []
 
     def delete_doctor(self, doctor_id):
         query = "DELETE FROM doctors WHERE doctor_id = %s"
-        return self.db_manager.execute_query(query, (doctor_id,))
+        try:
+            return self.db_manager.execute_query(query, (doctor_id,))
+        except Exception as e:
+            print(f"Error deleting doctor: {e}")
+            return False
 
 class StaffManager:
     def __init__(self, db_manager):
@@ -85,19 +170,35 @@ class StaffManager:
                    VALUES (%s, %s, %s, %s, %s)"""
         params = (data['name'], data['role'], data['phone'],
                   data['address'], data['salary'])
-        return self.db_manager.execute_query(query, params)
+        try:
+            return self.db_manager.execute_query(query, params)
+        except Exception as e:
+            print(f"Error adding staff: {e}")
+            return False
 
     def get_staff_details(self, staff_id):
         query = "SELECT staff_id, name, role, phone, address, salary FROM staff WHERE staff_id = %s"
-        return self.db_manager.execute_query(query, (staff_id,), fetch_one=True)
+        try:
+            return self.db_manager.execute_query(query, (staff_id,), fetch_one=True)
+        except Exception as e:
+            print(f"Error getting staff details: {e}")
+            return None
 
     def get_all_staff(self):
         query = "SELECT staff_id, name, role, phone, salary FROM staff ORDER BY staff_id DESC"
-        return self.db_manager.execute_query(query, fetch_all=True)
+        try:
+            return self.db_manager.execute_query(query, fetch_all=True)
+        except Exception as e:
+            print(f"Error getting all staff: {e}")
+            return []
 
     def delete_staff(self, staff_id):
         query = "DELETE FROM staff WHERE staff_id = %s"
-        return self.db_manager.execute_query(query, (staff_id,))
+        try:
+            return self.db_manager.execute_query(query, (staff_id,))
+        except Exception as e:
+            print(f"Error deleting staff: {e}")
+            return False
 
 class AppointmentManager:
     def __init__(self, db_manager):
@@ -107,7 +208,11 @@ class AppointmentManager:
         query = """INSERT INTO appointments (patient_id, doctor_id, booked_date, appointment_date, appointment_note)
                    VALUES (%s, %s, %s, %s, %s)"""
         params = (patient_id, doctor_id, booked_date, appointment_date, appointment_note)
-        return self.db_manager.execute_query(query, params)
+        try:
+            return self.db_manager.execute_query(query, params)
+        except Exception as e:
+            print(f"Error booking appointment: {e}")
+            return False
 
     def get_all_appointments(self):
         query = """SELECT a.appointment_id, p.name AS patient_name, d.name AS doctor_name,
@@ -116,11 +221,19 @@ class AppointmentManager:
                    JOIN patients p ON a.patient_id = p.patient_id
                    JOIN doctors d ON a.doctor_id = d.doctor_id
                    ORDER BY a.appointment_date DESC"""
-        return self.db_manager.execute_query(query, fetch_all=True)
+        try:
+            return self.db_manager.execute_query(query, fetch_all=True)
+        except Exception as e:
+            print(f"Error getting all appointments: {e}")
+            return []
 
     def delete_appointment(self, appointment_id):
         query = "DELETE FROM appointments WHERE appointment_id = %s"
-        return self.db_manager.execute_query(query, (appointment_id,))
+        try:
+            return self.db_manager.execute_query(query, (appointment_id,))
+        except Exception as e:
+            print(f"Error deleting appointment: {e}")
+            return False
 
 class MedicalRecordManager:
     def __init__(self, db_manager):
@@ -131,7 +244,11 @@ class MedicalRecordManager:
                    VALUES (%s, %s, %s, %s, %s, %s, %s)"""
         params = (patient_id, doctor_id, data['treatment'], data['prescriptions'],
                   data['note'], data['admit_date'], data['release_date'])
-        return self.db_manager.execute_query(query, params)
+        try:
+            return self.db_manager.execute_query(query, params)
+        except Exception as e:
+            print(f"Error adding medical record: {e}")
+            return False
 
     def get_patient_medical_history(self, patient_id):
         query = """SELECT mr.record_id, mr.record_date, d.name AS doctor_name, mr.treatment, mr.prescriptions, mr.note, mr.admit_date, mr.release_date, mr.doctor_id
@@ -139,45 +256,83 @@ class MedicalRecordManager:
                    JOIN doctors d ON mr.doctor_id = d.doctor_id
                    WHERE mr.patient_id = %s
                    ORDER BY mr.record_date DESC"""
-        return self.db_manager.execute_query(query, (patient_id,), fetch_all=True)
+        try:
+            return self.db_manager.execute_query(query, (patient_id,), fetch_all=True)
+        except Exception as e:
+            print(f"Error getting patient medical history: {e}")
+            return []
 
     def get_medical_record(self, record_id):
         query = "SELECT * FROM medical_records WHERE record_id = %s"
-        return self.db_manager.execute_query(query, (record_id,), fetch_one=True)
+        try:
+            return self.db_manager.execute_query(query, (record_id,), fetch_one=True)
+        except Exception as e:
+            print(f"Error getting medical record: {e}")
+            return None
 
     def delete_medical_record(self, record_id):
         query = "DELETE FROM medical_records WHERE record_id = %s"
-        return self.db_manager.execute_query(query, (record_id,))
+        try:
+            return self.db_manager.execute_query(query, (record_id,))
+        except Exception as e:
+            print(f"Error deleting medical record: {e}")
+            return False
 
-
-# --- Initialize Managers ---
 patient_manager = PatientManager(db_manager)
 doctor_manager = DoctorManager(db_manager)
 staff_manager = StaffManager(db_manager)
 appointment_manager = AppointmentManager(db_manager)
 medical_record_manager = MedicalRecordManager(db_manager)
 
+VALID_USERNAME = "admin"
+VALID_PASSWORD = "adminpass"
 
-# --- Flask Routes ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session:
+            flash('Please log in to access this page.', 'info')
+            return redirect(url_for('/'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if username == VALID_USERNAME and password == VALID_PASSWORD:
+            session['logged_in'] = True
+            flash('Logged in successfully!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid credentials. Please try again.', 'error')
+    return render_template('index.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
 
 @app.route('/')
 def index():
-    """Home page/dashboard."""
+    if not session.get('logged_in'):
+        return redirect(url_for('/'))
     return render_template('index.html')
 
 @app.route('/patients', methods=['GET', 'POST'])
+@login_required
 def patients():
-    """Handles patient listing and adding."""
     if request.method == 'POST':
         name = request.form['name'].strip()
         dob_str = request.form['dob'].strip()
         gender = request.form['gender'].strip()
         address = request.form['address'].strip()
         phone = request.form['phone'].strip()
-         # Still expecting this from form, but not in DB
-
         dob = parse_date_ddmmyyyy(dob_str)
-        if dob is None and dob_str: # If DOB was provided but invalid
+        if dob is None and dob_str:
             flash('Invalid DOB format. Please use DD-MM-YYYY.', 'error')
             return redirect(url_for('patients'))
 
@@ -190,7 +345,6 @@ def patients():
                 'gender': gender,
                 'address': address,
                 'phone': phone,
-                # 'emergency_contact_name': emergency_contact_name # Removed from DB schema, so don't pass
             }
             if patient_manager.add_patient(data):
                 flash('Patient added successfully!', 'success')
@@ -199,15 +353,14 @@ def patients():
         return redirect(url_for('patients'))
 
     patients_list = patient_manager.get_all_patients()
-    # Format DOB for display
     if patients_list:
         for p in patients_list:
             p['dob'] = format_date_ddmmyyyy(p['dob'])
     return render_template('patients.html', patients=patients_list)
 
 @app.route('/patients/delete/<int:patient_id>', methods=['POST'])
+@login_required
 def delete_patient(patient_id):
-    """Handles patient deletion."""
     if patient_manager.delete_patient(patient_id):
         flash('Patient deleted successfully!', 'success')
     else:
@@ -215,8 +368,8 @@ def delete_patient(patient_id):
     return redirect(url_for('patients'))
 
 @app.route('/doctors', methods=['GET', 'POST'])
+@login_required
 def doctors():
-    """Handles doctor listing and adding."""
     if request.method == 'POST':
         name = request.form['name'].strip()
         qualification = request.form['qualification'].strip()
@@ -242,8 +395,8 @@ def doctors():
     return render_template('doctors.html', doctors=doctors_list)
 
 @app.route('/doctors/delete/<int:doctor_id>', methods=['POST'])
+@login_required
 def delete_doctor(doctor_id):
-    """Handles doctor deletion."""
     if doctor_manager.delete_doctor(doctor_id):
         flash('Doctor deleted successfully!', 'success')
     else:
@@ -251,8 +404,8 @@ def delete_doctor(doctor_id):
     return redirect(url_for('doctors'))
 
 @app.route('/staff', methods=['GET', 'POST'])
+@login_required
 def staff():
-    """Handles staff listing and adding."""
     if request.method == 'POST':
         name = request.form['name'].strip()
         role = request.form['role'].strip()
@@ -288,8 +441,8 @@ def staff():
     return render_template('staff.html', staff=staff_list)
 
 @app.route('/staff/delete/<int:staff_id>', methods=['POST'])
+@login_required
 def delete_staff(staff_id):
-    """Handles staff deletion."""
     if staff_manager.delete_staff(staff_id):
         flash('Staff deleted successfully!', 'success')
     else:
@@ -297,8 +450,8 @@ def delete_staff(staff_id):
     return redirect(url_for('staff'))
 
 @app.route('/appointments', methods=['GET', 'POST'])
+@login_required
 def appointments():
-    """Handles appointment listing and booking."""
     if request.method == 'POST':
         patient_id_str = request.form['patient_id'].strip()
         doctor_id_str = request.form['doctor_id'].strip()
@@ -329,7 +482,6 @@ def appointments():
         return redirect(url_for('appointments'))
 
     appointments_list = appointment_manager.get_all_appointments()
-    # Format dates for display
     if appointments_list:
         for appt in appointments_list:
             appt['booked_date'] = format_date_ddmmyyyy(appt['booked_date'])
@@ -344,8 +496,8 @@ def appointments():
                            doctors=doctors_for_combo)
 
 @app.route('/appointments/delete/<int:appointment_id>', methods=['POST'])
+@login_required
 def delete_appointment(appointment_id):
-    """Handles appointment deletion."""
     if appointment_manager.delete_appointment(appointment_id):
         flash('Appointment deleted successfully!', 'success')
     else:
@@ -353,8 +505,8 @@ def delete_appointment(appointment_id):
     return redirect(url_for('appointments'))
 
 @app.route('/medical_records', methods=['GET', 'POST'])
+@login_required
 def medical_records():
-    """Handles medical record listing and adding."""
     if request.method == 'POST':
         patient_id_str = request.form['patient_id'].strip()
         doctor_id_str = request.form['doctor_id'].strip()
@@ -398,19 +550,16 @@ def medical_records():
             flash('Invalid Patient ID or Doctor ID.', 'error')
         return redirect(url_for('medical_records'))
 
-    # Display medical records for a selected patient (if any)
     selected_patient_id = request.args.get('patient_id', type=int)
     medical_records_list = []
     current_patient_info = None
 
     if selected_patient_id:
         medical_records_list = medical_record_manager.get_patient_medical_history(selected_patient_id)
-        # Format dates for display
         if medical_records_list:
             for rec in medical_records_list:
                 rec['admit_date'] = format_date_ddmmyyyy(rec['admit_date'])
                 rec['release_date'] = format_date_ddmmyyyy(rec['release_date'])
-                # record_date is DATETIME, keep full timestamp for now
                 rec['record_date'] = rec['record_date'].strftime('%Y-%m-%d %H:%M:%S') 
 
         current_patient_info = patient_manager.get_patient(selected_patient_id)
@@ -422,22 +571,21 @@ def medical_records():
                            medical_records=medical_records_list,
                            patients=patients_for_combo,
                            doctors=doctors_for_combo,
-                           current_patient_info=current_patient_info, # Pass patient object
+                           current_patient_info=current_patient_info,
                            selected_patient_id=selected_patient_id)
 
 @app.route('/medical_records/delete/<int:record_id>', methods=['POST'])
+@login_required
 def delete_medical_record(record_id):
-    """Handles medical record deletion."""
     if medical_record_manager.delete_medical_record(record_id):
         flash('Medical record deleted successfully!', 'success')
     else:
         flash('Failed to delete medical record.', 'error')
-    # Redirect back to medical records, with the same patient selected if possible
-    patient_id = request.form.get('patient_id') # Get patient_id from hidden input on form
+    patient_id = request.form.get('patient_id')
     if patient_id:
         return redirect(url_for('medical_records', patient_id=patient_id))
     return redirect(url_for('medical_records'))
 
 
 if __name__ == '__main__':
-    app.run(debug="true") 
+    app.run(debug=True)
