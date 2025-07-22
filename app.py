@@ -4,8 +4,8 @@ from db_manager import DatabaseManager
 import pymysql
 import pymysql.cursors
 from functools import wraps
-import os # Import the os module to access environment variables
-from dotenv import load_dotenv # Import load_dotenv
+import os 
+from dotenv import load_dotenv 
 
 app = Flask(__name__)
 app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
