@@ -4,8 +4,10 @@ from db_manager import DatabaseManager
 
 app = Flask(__name__)
 app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
+timeout = 10
 
-db_manager = DatabaseManager("localhost", "root", "7206", "hospitalmate_db6")
+db_manager = DatabaseManager("hostpitalmate-hospitalmate.f.aivencloud.com", "avnadmin", "AVNS__Jq4CKtqRyPS5Id0EqR", "defaultdb",21233, pymysql.cursors.DictCursor, "utf8mb4", timeout, timeout, timeout)
+
 
 # Ensure database connection is established at app startup
 if not db_manager.connect():
