@@ -3,7 +3,7 @@ from datetime import datetime, date
 from db_manager import DatabaseManager
 
 app = Flask(__name__)
-app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production' # IMPORTANT: Change this!
+app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
 
 db_manager = DatabaseManager("localhost", "root", "7206", "hospitalmate_db6")
 
