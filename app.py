@@ -4,17 +4,21 @@ from db_manager import DatabaseManager
 import pymysql
 import pymysql.cursors
 from functools import wraps
+import os # Import the os module to access environment variables
+from dotenv import load_dotenv # Import load_dotenv
 
 app = Flask(__name__)
 app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
 timeout = 10
 
+load_dotenv()
 DB_HOST = "hostpitalmate-hospitalmate.f.aivencloud.com"
 DB_USER = "avnadmin"
-DB_PASSWORD = "AVNS__Jq4CKtqRyPS5Id0EqR"
-DB_NAME = "defaultdb"
+DB_PASSWORD = os.getenv("AIVEN_DB_PASSWORD")
+DB_NAME = "hospitalmate_db"
 DB_PORT = 21233
 DB_CHARSET = "utf8mb4"
+
 
 db_manager = DatabaseManager(
     host=DB_HOST,
