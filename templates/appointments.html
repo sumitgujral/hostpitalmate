@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-3xl font-bold text-white mb-6">Appointment Scheduling</h2>
+<div class="bg-[#1F2223] text-white p-6 rounded-lg mb-6">
+    <h3 class="text-xl font-semibold text-white mb-4">Book New Appointment</h3>
+    <form method="POST" action="{{ url_for('appointments') }}" class="flex flex-col gap-3">
+            <select id="patient_id" name="patient_id" class="form-select w-3/4 px-2 py-2 outline-none rounded-md bg-zinc-700 text-zinc-400" required>
+                <option value="">Select Patient</option>
+                {% for p in patients %}
+                <option value="{{ p.patient_id }}">{{ p.name }} (ID: {{ p.patient_id }})</option>
+                {% endfor %}
+            </select>
+            <select id="doctor_id" name="doctor_id" class="form-select w-3/4 px-2 py-2 outline-none rounded-md bg-zinc-700 text-zinc-400" required>
+                <option value="">Select Doctor</option>
+                {% for d in doctors %}
+                <option value="{{ d.doctor_id }}">{{ d.name }} ({{ d.specialization }})</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="booked_date" name="booked_date" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Booked Date (DD-MM-YYYY)" required>
+            <input type="text" id="appointment_date" name="appointment_date" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Appointment Date (DD-MM-YYYY)" required>
+            <textarea id="appointment_note" name="appointment_note" rows="3" class="form-textarea w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Appointment Note"></textarea>
+
+            <div class="flex justify-start gap-4 mt-4">
+            <button type="submit" class="btn-primary rounded-md p-2 bg-yellow-600 hover:bg-blue-600">Book Appointment</button>
+            <a href="{{ url_for('appointments') }}" class="btn-primary rounded-md p-2 bg-green-500 hover:bg-blue-600">Refresh List</a>
+        </div>
+    </form>
+</div>
+<div class="bg-[#1F2223] p-6 rounded-lg shadow-md">
+    <h3 class="text-xl font-semibold text-white mb-4">Appointments List</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-[#1F2223] text-white">
+                <tr>
+                    <th class="table-header">ID</th>
+                    <th class="table-header">Patient</th>
+                    <th class="table-header">Doctor</th>
+                    <th class="table-header">Booked Date</th>
+                    <th class="table-header">Appointment Date</th>
+                    <th class="table-header">Note</th>
+                    <th class="table-header">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-[#1F2223] divide-y divide-gray-200 text-white text-center">
+                {% for appt in appointments %}
+                <tr class="{% if loop.index is even %}table-row-even{% else %}table-row-odd{% endif %}">
+                    <td class="table-cell">{{ appt.appointment_id }}</td>
+                    <td class="table-cell">{{ appt.patient_name }}</td>
+                    <td class="table-cell">{{ appt.doctor_name }}</td>
+                    <td class="table-cell">{{ appt.booked_date }}</td>
+                    <td class="table-cell">{{ appt.appointment_date }}</td>
+                    <td class="table-cell">{{ appt.appointment_note }}</td>
+                    <td class="table-cell">
+                        <form method="POST" action="{{ url_for('delete_appointment', appointment_id=appt.appointment_id) }}">
+                            <button type="submit" class="btn-danger text-white p-1 m-5 rounded-md bg-red-500 hover:bg-blue-600">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="table-cell text-center text-white">No appointments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

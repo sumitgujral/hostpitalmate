@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-3xl font-bold text-white mb-6">Medical Records</h2>
+<div class="bg-[#1F2223] text-white p-6 rounded-lg mb-6">
+    <h3 class="text-xl font-semibold text-white mb-4">Add New Medical Record</h3>
+    <form method="POST" action="{{ url_for('medical_records') }}" class="flex flex-col gap-3">
+            <select id="patient_id" name="patient_id" class="form-select w-3/4 px-2 py-2 outline-none rounded-md bg-zinc-700 text-zinc-400" required>
+                <option value="">Select Patient</option>
+                {% for p in patients %}
+                <option value="{{ p.patient_id }}" {% if selected_patient_id == p.patient_id %}selected{% endif %}>{{ p.name }} (ID: {{ p.patient_id }})</option>
+                {% endfor %}
+            </select>
+            <select id="doctor_id" name="doctor_id" class="form-select w-3/4 px-2 py-2 outline-none rounded-md bg-zinc-700 text-zinc-400" required>
+                <option value="">Select Doctor</option>
+                {% for d in doctors %}
+                <option value="{{ d.doctor_id }}">{{ d.name }} ({{ d.specialization }})</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="admit_date" name="admit_date" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Admit Date (DD-MM-YYYY)" required>
+            <input type="text" id="release_date" name="release_date" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Release Date (DD-MM-YYYY)" required>
+            <textarea id="treatment" name="treatment" rows="3" class="form-textarea w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Treatment"></textarea>
+            <textarea id="prescriptions" name="prescriptions" rows="3" class="form-textarea w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Prescriptions"></textarea>
+            <textarea id="note" name="note" rows="3" class="form-textarea w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" placeholder="Note"></textarea>
+
+        <div class="flex justify-start gap-4 mt-4">
+            <button type="submit" class="btn-primary rounded-md p-2 bg-yellow-600 hover:bg-blue-600">Add New Record</button>
+        </div>
+    </form>
+</div>
+<div class="bg-[#1F2223] text-white p-6 rounded-lg mb-6">
+    <h3 class="text-xl font-semibold text-white mb-4">View Patient Medical History</h3>
+    <form method="GET" action="{{ url_for('medical_records') }}" class="flex items-end space-x-4">
+        <div class="flex-grow">
+            <label for="view_patient_id" class="form-label">Select Patient to View Records:</label>
+            <select id="view_patient_id" name="patient_id" class="form-select px-2 py-2 outline-none rounded-md bg-zinc-700 text-zinc-400" onchange="this.form.submit()">
+                <option value="">-- Select Patient --</option>
+                {% for p in patients %}
+                <option value="{{ p.patient_id }}" {% if selected_patient_id == p.patient_id %}selected{% endif %}>{{ p.name }} (ID: {{ p.patient_id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-primary rounded-md p-2 bg-green-500 hover:bg-blue-600">Load Records</button>
+    </form>
+    <p class="text-zinc-400 mt-4">Selected Patient: <span class="font-semibold">
+        {% if current_patient_info %}{{ current_patient_info.name }} (ID: {{ current_patient_info.patient_id }}){% else %}None{% endif %}
+    </span></p>
+</div>
+<div class="bg-[#1F2223] p-6 rounded-lg shadow-md">
+    <h3 class="text-xl font-semibold text-white mb-4">Medical Records List</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-[#1F2223] text-white">
+                <tr>
+                    <th class="table-header">ID</th>
+                    <th class="table-header">Record Date</th>
+                    <th class="table-header">Doctor</th>
+                    <th class="table-header">Treatment</th>
+                    <th class="table-header">Prescriptions</th>
+                    <th class="table-header">Note</th>
+                    <th class="table-header">Admit Date</th>
+                    <th class="table-header">Release Date</th>
+                    <th class="table-header">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-[#1F2223] divide-y divide-gray-200 text-white text-center">
+                {% for record in medical_records %}
+                <tr class="{% if loop.index is even %}table-row-even{% else %}table-row-odd{% endif %}">
+                    <td class="table-cell">{{ record.record_id }}</td>
+                    <td class="table-cell">{{ record.record_date }}</td>
+                    <td class="table-cell">{{ record.doctor_name }}</td>
+                    <td class="table-cell">{{ record.treatment | default('', true) | truncate(50, True, '...') }}</td>
+                    <td class="table-cell">{{ record.prescriptions | default('', true) | truncate(50, True, '...') }}</td>
+                    <td class="table-cell">{{ record.note | default('', true) | truncate(50, True, '...') }}</td>
+                    <td class="table-cell">{{ record.admit_date }}</td>
+                    <td class="table-cell">{{ record.release_date }}</td>
+                    <td class="table-cell">
+                        <form method="POST" action="{{ url_for('delete_medical_record', record_id=record.record_id) }}">
+                            <input type="hidden" name="patient_id" value="{{ selected_patient_id }}">
+                            <button type="submit" class="btn-danger text-white p-1 m-5 rounded-md bg-red-500 hover:bg-blue-600">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="table-cell text-center text-gray-500">
+                        {% if selected_patient_id %}
+                            No medical records found for this patient.
+                        {% else %}
+                            Select a patient above to view their medical history.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

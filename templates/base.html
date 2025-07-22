@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HospitalMate</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .container {
+            max-width: 1000px;
+        } 
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#2C3032]">
+    <nav class="bg-[#1F2223] p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{{ url_for('index') }}" class="text-white text-2xl font-bold rounded-md px-3 py-2 hover:bg-gray-700">HospitalMate</a>
+            <div class="flex space-x-4">
+                <a href="{{ url_for('patients') }}" class="text-gray-300 hover:bg-gray-700 rounded-md px-3 py-2">Patients</a>
+                <a href="{{ url_for('doctors') }}" class="text-gray-300 hover:bg-gray-700 rounded-md px-3 py-2">Doctors</a>
+                <a href="{{ url_for('staff') }}" class="text-gray-300 hover:bg-gray-700 rounded-md px-3 py-2">Staff</a>
+                <a href="{{ url_for('appointments') }}" class="text-gray-300 hover:bg-gray-700 rounded-md px-3 py-2">Appointments</a>
+                <a href="{{ url_for('medical_records') }}" class="text-gray-300 hover:bg-gray-700 rounded-md px-3 py-2">Medical Records</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto p-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-4">
+                    {% for category, message in messages %}
+                        <div class="p-3 rounded-md text-sm {% if category == 'error' %}bg-red-100 text-red-800{% elif category == 'success' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-[#1F2223] text-white text-center p-4 mt-auto">
+        <p>HospitalMate - In Always Your Service</p>
+    </footer>
+</body>
+</html>
