@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv 
 
 app = Flask(__name__)
-app.secret_key = 'a_very_secret_key_for_flask_messages_change_this_in_production'
+app.secret_key = os.getenv("SECRETKEY_FOR_FLASK")
 timeout = 10
 
 load_dotenv()
