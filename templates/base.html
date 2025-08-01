@@ -20,7 +20,7 @@
 </head>
 <body class="min-h-screen flex flex-col bg-[#2C3032]">
     <nav class="bg-[#1F2223] p-4">
-        <div class="container mx-auto flex justify-between items-center">
+        <div class="mx-auto flex justify-between items-center">
             <a href="{{ url_for('index') }}" class="text-white text-2xl font-bold rounded-md px-3 py-2 hover:bg-gray-700">HospitalMate</a>
             <div class="flex space-x-4">
                 {% if session.logged_in %}
@@ -37,7 +37,7 @@
         </div>
     </nav>
 
-    <main class="flex-grow container mx-auto p-6">
+    <main class="container flex-grow mx-auto p-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="mb-4">

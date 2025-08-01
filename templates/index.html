@@ -8,14 +8,14 @@
     <p class="mt-6 text-md text-zinc-50">Select a module from the navigation bar above to get started.</p>
 </div>
 {% else %}
-<h2 class="text-3xl font-bold text-white mb-6">Login to HospitalMate</h2>
+<h2 class="text-3xl text-center font-bold text-white mb-6">Login to HospitalMate</h2>
     <div class="bg-[#1F2223] text-white p-6 rounded-lg mb-6">
-    <form action="{{ url_for('login') }}" method="POST" class="flex flex-col gap-3">
-            <input type="username" id="username" name="username" placeholder="username" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" required>
-            <input type="password" id="password" name="password" placeholder="password" class="form-input w-3/4 px-3 py-2 outline-none rounded-md bg-zinc-700" required>
-            <div class="flex justify-start gap-4 mt-4">
-                <button type="submit" class="btn-primary rounded-md px-3 py-2 bg-yellow-600 hover:bg-blue-600">Login</button>
-            </div>
+    <form action="{{ url_for('login') }}" method="POST" class="flex flex-col gap-3 items-center">
+            <input type="username" id="username" name="username" placeholder="username" class="form-input px-3 py-2 text-center outline-none rounded-md bg-zinc-700" required>
+            <input type="password" id="password" name="password" placeholder="password" class="form-input px-3 py-2 text-center outline-none rounded-md bg-zinc-700" required>
+            <div>
+            <button type="submit" class="btn-primary w-full rounded-md px-3 py-2 text-center bg-yellow-600 hover:bg-blue-600">Login</button>
+        </div>
     </form>
 </div>
 {% endif %}
